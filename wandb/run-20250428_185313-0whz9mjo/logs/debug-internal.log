@@ -1,0 +1,16 @@
+{"time":"2025-04-28T18:53:13.188588403+02:00","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/i2cat/mai/atci/mai-atci-ppo-project/wandb/run-20250428_185313-0whz9mjo/logs/debug-core.log"}
+{"time":"2025-04-28T18:53:13.483442315+02:00","level":"INFO","msg":"created new stream","id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:13.483477995+02:00","level":"INFO","msg":"stream: started","id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:13.483497587+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:13.48351597+02:00","level":"INFO","msg":"sender: started","stream_id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:13.483557841+02:00","level":"INFO","msg":"handler: started","stream_id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:13.84816535+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-04-28T18:53:14.310083294+02:00","level":"INFO","msg":"stream: closing","id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:14.310124994+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-04-28T18:53:14.310159965+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-04-28T18:53:23.927049081+02:00","level":"INFO","msg":"tensorboard: no root directory after 10 seconds, using working directory"}
+{"time":"2025-04-28T18:53:24.81313114+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-04-28T18:53:25.067339698+02:00","level":"INFO","msg":"handler: closed","stream_id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:25.067389947+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:25.067395543+02:00","level":"INFO","msg":"sender: closed","stream_id":"0whz9mjo"}
+{"time":"2025-04-28T18:53:25.067505641+02:00","level":"INFO","msg":"stream: closed","id":"0whz9mjo"}

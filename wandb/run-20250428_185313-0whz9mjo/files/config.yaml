@@ -1,0 +1,43 @@
+_wandb:
+    value:
+        cli_version: 0.19.9
+        code_path: code/ppo.py
+        m: []
+        python_version: 3.10.12
+        t:
+            "1":
+                - 1
+                - 55
+            "2":
+                - 1
+                - 55
+            "3":
+                - 13
+                - 16
+                - 23
+                - 35
+                - 55
+            "4": 3.10.12
+            "5": 0.19.9
+            "8":
+                - 5
+            "12": 0.19.9
+            "13": linux-x86_64
+exp_name:
+    value: ppo
+gym_id:
+    value: CartPole-v1
+learning_rate:
+    value: 0.00025
+seed:
+    value: 42
+torch_deterministic:
+    value: true
+total_timesteps:
+    value: 25000
+track:
+    value: true
+wandb_entity_name:
+    value: null
+wandb_project_name:
+    value: ppo

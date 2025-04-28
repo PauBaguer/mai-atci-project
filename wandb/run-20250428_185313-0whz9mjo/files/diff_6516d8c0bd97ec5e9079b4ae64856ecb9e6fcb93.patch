@@ -1,0 +1,80 @@
+diff --git a/ppo.py b/ppo.py
+index efebc98..dec40ca 100644
+--- a/ppo.py
++++ b/ppo.py
+@@ -3,6 +3,10 @@ import os
+ import time
+ from distutils.util import strtobool
+ from torch.utils.tensorboard import SummaryWriter
++import random
++import numpy as np
++import torch
++import gym
+ 
+ def parse_args():
+     parser = argparse.ArgumentParser()
+@@ -34,7 +38,7 @@ def parse_args():
+ 
+ if __name__ == '__main__':
+     args = parse_args()
+-    print(args)
++
+ 
+     run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+ 
+@@ -58,6 +62,36 @@ if __name__ == '__main__':
+         )
+     )
+ 
+-    for i in range(100):
+-        writer.add_scalar("test_loss", i*2, global_step=i)
++    random.seed(args.seed)
++    np.random.seed(args.seed)
++    torch.manual_seed(args.seed)
++    torch.backends.cudnn.deterministic = args.torch_deterministic
++
++    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
++
++    def make_env(gym_id):
++        def _make_env():
++            env = gym.make(gym_id, render_mode="rgb_array")
++            env = gym.wrappers.RecordEpisodeStatistics(env)
++            env = gym.wrappers.RecordVideo(env, "videos", episode_trigger=lambda t: t% 100 == 0)
++            return env
++        return _make_env
++
++    envs = gym.vector.SyncVectorEnv([make_env(args.gym_id)])
++
++    observation = envs.reset()
++    try:
++        for _ in range(2000):
++            action = envs.action_space.sample()
++            observation, reward, terminated, truncated, info = envs.step(action)
++
++            if 'final_info' in info.keys():
++                for item in info['final_info']:
++                    if type(item) == dict and 'episode' in item.keys():
++                        print(f"global_step={item['episode']['l']}, episodic_return={item['episode']['r']}")
++                        # writer.add_scalar("charts/episodic_return", item['episode']['r'], item['episode']['l'])
++                        # writer.add_scalar("charts/episodic_length", item['episode']['l'], item['episode']['l'])
++                        break
+ 
++    finally:
++        envs.close()
+diff --git a/requirements.txt b/requirements.txt
+index b5cafcd..94b89c7 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -1,5 +1,8 @@
+ torch
+ torchvision
+-numpy
++numpy==1.23.5
+ tensorboard
+-wandb
+\ No newline at end of file
++wandb
++gym
++moviepy
++pygame
+\ No newline at end of file
