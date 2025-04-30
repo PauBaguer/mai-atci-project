@@ -5,5 +5,7 @@ numpy
 tensorboard
 wandb
 gymnasium
+gymnasium[mujoco]
+mujoco
 moviepy
 pygame

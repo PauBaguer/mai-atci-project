@@ -1,0 +1,11 @@
+    def close(self):
+        recorder.orig_close(self)
+        # if not self.enabled:
+        #     return
+        if wandb.run:
+            path = getattr(self, "video_folder")
+            for v in os.listdir(path):
+                m = re.match(r".+(videos\.\d+).+", v)
+                key = m.group(1) if m else "videos"
+
+                wandb.log({key: wandb.Video(getattr(self, "video_folder")+'/'+v)})
