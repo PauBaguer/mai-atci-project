@@ -9,7 +9,7 @@ import gymnasium as gym
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 import copy
 
 
@@ -22,6 +22,13 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}", fps=50, episode_trigger=lambda episode_id: episode_id % 25 == 0)
+
+        env = gym.wrappers.ClipAction(env)
+        env = gym.wrappers.NormalizeObservation(env)
+        env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10), env.observation_space)
+        env = gym.wrappers.NormalizeReward(env)
+        env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -10, 10))
+
         # env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
@@ -44,36 +51,42 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, 1), std=1.0),
         )
 
-        self.actor = nn.Sequential(
+        self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
+            layer_init(nn.Linear(64, np.prod(envs.single_action_space.shape)), std=0.01),
         )
+
+        self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.single_action_space.shape)))
+
+
 
     def get_value(self, x):
         return self.critic(x)
 
     def get_action_and_value(self, x, action=None):
-        logits = self.actor(x)
-        probs = Categorical(logits=logits)
+        action_mean = self.actor_mean(x)
+        action_logstd = self.actor_logstd.expand_as(action_mean)
+        action_std = torch.exp(action_logstd)
+        probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy(), self.critic(x)
+        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='Experiment name')
-    parser.add_argument('--gym-id', type=str, default="CartPole-v1",
+    parser.add_argument('--gym-id', type=str, default="Walker2d-v5",
                         help='Id of the Gym environment')
-    parser.add_argument('--learning-rate', type=float, default=2.5e-4,
+    parser.add_argument('--learning-rate', type=float, default=3e-4,
                         help='Learning rate')
     parser.add_argument('--seed', type=int, default=42,
                         help='Seed for the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=500_000,
+    parser.add_argument('--total-timesteps', type=int, default=1_000_000,
                         help='Total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False` is used to have the same results')
@@ -90,9 +103,9 @@ def parse_args():
                         help='whether to capture videos of the agent performances (check out `videos` folder)')
 
      # Algorithm specific arguments
-    parser.add_argument('--num-envs', type=int, default=8,
+    parser.add_argument('--num-envs', type=int, default=1,
                         help='Number of parallel environments')
-    parser.add_argument('--num-steps', type=int, default=128,
+    parser.add_argument('--num-steps', type=int, default=2048,
                         help='Number of steps to run in each environment per policy rollout')
     parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='Toggle learning rate annealing for policy and value networks')
@@ -102,9 +115,9 @@ def parse_args():
                         help='Discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.95,
                         help='Factor for trade-off of bias vs variance for Generalized Advantage Estimation')
-    parser.add_argument('--num-minibatches', type=int, default=4,
+    parser.add_argument('--num-minibatches', type=int, default=32,
                         help='Number of minibatches')
-    parser.add_argument('--update-epochs', type=int, default=4,
+    parser.add_argument('--update-epochs', type=int, default=10,
                         help='Number of epochs')
     parser.add_argument('--norm-adv', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='Toggles advantages normalization')
@@ -112,13 +125,13 @@ def parse_args():
                         help='Surrogate Clip parameter')
     parser.add_argument('--clip-vloss', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='Toggles the value loss clip')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
+    parser.add_argument('--ent-coef', type=float, default=0.0,
                         help='Entropy coefficient')
     parser.add_argument('--vf-coef', type=float, default=0.5,
                         help='Value function coefficient')
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                         help='Max norm of gradients')
-    parser.add_argument('--target-kl', type=float, default=0.015,
+    parser.add_argument('--target-kl', type=float, default=0.015, # Default value in OpenAI Spinning UP
                         help='Target KL divergence threshold to trigger Early Stopping')
 
     args = parser.parse_args()
@@ -165,7 +178,7 @@ if __name__ == '__main__':
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
-    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
+    assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
     envs = gym.wrappers.vector.DictInfoToList(envs)
 
 
@@ -298,7 +311,7 @@ if __name__ == '__main__':
                 mb_inds = b_inds[start:end]
 
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds],
-                                                                              b_actions.long()[mb_inds])
+                                                                              b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 

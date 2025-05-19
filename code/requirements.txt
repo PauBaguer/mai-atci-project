@@ -1,0 +1,11 @@
+torch
+torchvision
+# numpy==1.23.5
+numpy
+tensorboard
+wandb
+gymnasium
+gymnasium[mujoco]
+mujoco
+moviepy
+pygame
